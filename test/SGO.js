@@ -9,6 +9,7 @@ const Hash = require("eth-lib/lib/hash");
 const SGO = artifacts.require("./SgoTestToken.sol");
 const SgoTestSale = artifacts.require("./SgoTestSale.sol");
 const SgoSubToken = artifacts.require("./SgoSubToken.sol");
+const BigNumber = web3.BigNumber;
 
 contract('SGO', function (accounts) {
     let instance;
@@ -16,16 +17,16 @@ contract('SGO', function (accounts) {
         instance = await SGO.new();
     });
 
-    let expectRevert = async promise => {
+    let expectRevert = async (promise, message) => {
         try {
             await promise;
         } catch (error) {
             if (error.message.search('revert') >= 0) {
                 return;
             }
-            assert.fail(null, null, 'Expected revert not received, but received error: ' + error.message);
+            assert.fail(null, null, message + '. Expected revert not received, but received error: ' + error.message);
         }
-        assert.fail(null, null, 'Expected revert not received');
+        assert.fail(null, null, message + '. Expected revert not received');
     };
 
     const COIN = 1e18;
@@ -149,8 +150,7 @@ contract('SGO', function (accounts) {
     it("sale with transfer check", async function () {
         await instance.registerReceiverContract(accounts[1]);
 
-        // transfer to non-contract should fail
-        await expectRevert(instance.transfer(accounts[1], COIN));
+        await expectRevert(instance.transfer(accounts[1], COIN), 'transfer to non-contract should fail');
 
         let sale = (await SgoTestSale.new(instance.address));
         let sub = (await SgoSubToken.new(sale.address));
@@ -199,8 +199,7 @@ contract('SGO', function (accounts) {
         assert.equal(1000 * COIN, (await sub.balanceOf(sale.address)).valueOf(), "subCoin sale initial balance check");
         assert.equal(0, (await sub.balanceOf(accounts[0])).valueOf(), "subCoin a0 initial balance check");
 
-        // attempt to pay before contract is registered
-        await expectRevert(instance.payToContractOnBehalf(accounts[1], sale.address, 2 * COIN));
+        await expectRevert(instance.payToContractOnBehalf(accounts[1], sale.address, 2 * COIN), 'attempt to pay before contract is registered');
 
         await instance.registerReceiverContract(sale.address);
 
@@ -312,5 +311,95 @@ contract('SGO', function (accounts) {
         ], 'events are emitted');
     });
 
+    function bulkData(address, amount) {
+        return new BigNumber(address).add(new BigNumber(amount).times(new BigNumber('0x010000000000000000000000000000000000000000')))
+    }
+
+    it("bulkTransfer balance check", async function () {
+        await expectRevert(instance.bulkTransfer([bulkData(accounts[1], TOTAL_SUPPLY + COIN)]), 'bulk transfer (all + 1)');
+        await expectRevert(instance.bulkTransfer([bulkData(accounts[1], TOTAL_SUPPLY), bulkData(accounts[2], COIN)]), 'bulk transfer (all, 1)');
+        await expectRevert(instance.bulkTransfer([bulkData(accounts[1], 1), bulkData(accounts[2], TOTAL_SUPPLY)]), 'bulk transfer (1, all)');
+        await expectRevert(instance.bulkTransfer([bulkData(accounts[1], TOTAL_SUPPLY / 2), bulkData(accounts[2], TOTAL_SUPPLY / 2) + COIN]), 'bulk transfer (all/2, all/2+1)');
+        await expectRevert(instance.bulkTransfer([bulkData(accounts[1], TOTAL_SUPPLY / 2), bulkData(accounts[2], TOTAL_SUPPLY / 2), bulkData(accounts[3], COIN)]), 'bulk transfer (all/2, all/2, 1)');
+        await expectRevert(instance.bulkTransfer([bulkData(accounts[1], TOTAL_SUPPLY / 2), bulkData(accounts[1], TOTAL_SUPPLY / 2), bulkData(accounts[1], COIN)]), 'bulk transfer (all/2, all/2, 1) same address');
+
+        let result = await instance.bulkTransfer([bulkData(accounts[1], TOTAL_SUPPLY)]);
+
+        assert.equal(0, (await instance.balanceOf(accounts[0])).valueOf(), "owner balance check");
+        assert.equal(TOTAL_SUPPLY, (await instance.balanceOf(accounts[1])).valueOf(), "target balance check");
+
+        expect.web3Events(result, [
+            {
+                event: 'Transfer',
+                args: {
+                    from: accounts[0],
+                    to: accounts[1],
+                    value: TOTAL_SUPPLY
+                }
+            },
+        ], 'events are emitted');
+    });
+
+    it("bulkTransfer, multiple transfers check", async function () {
+        let result = await instance.bulkTransfer([bulkData(accounts[1], COIN), bulkData(accounts[2], 2 * COIN), bulkData(accounts[3], 3 * COIN) ]);
+
+        assert.equal(TOTAL_SUPPLY - 6 * COIN, (await instance.balanceOf(accounts[0])).valueOf(), "owner balance check");
+        assert.equal(COIN, (await instance.balanceOf(accounts[1])).valueOf(), "target 1 balance check");
+        assert.equal(2 * COIN, (await instance.balanceOf(accounts[2])).valueOf(), "target 2 balance check");
+        assert.equal(3 * COIN, (await instance.balanceOf(accounts[3])).valueOf(), "target 3 balance check");
+
+        expect.web3Events(result, [
+            {
+                event: 'Transfer',
+                args: {
+                    from: accounts[0],
+                    to: accounts[1],
+                    value: COIN
+                }
+            },
+            {
+                event: 'Transfer',
+                args: {
+                    from: accounts[0],
+                    to: accounts[2],
+                    value: 2 * COIN
+                }
+            },
+            {
+                event: 'Transfer',
+                args: {
+                    from: accounts[0],
+                    to: accounts[3],
+                    value: 3 * COIN
+                }
+            },
+        ], 'events are emitted');
+    });
+
+    it("bulkTransfer, multiple transfers to same address check", async function () {
+        let result = await instance.bulkTransfer([bulkData(accounts[1], COIN), bulkData(accounts[1], 2 * COIN)]);
+
+        assert.equal(TOTAL_SUPPLY - 3 * COIN, (await instance.balanceOf(accounts[0])).valueOf(), "owner balance check");
+        assert.equal(3 * COIN, (await instance.balanceOf(accounts[1])).valueOf(), "target balance check");
+
+        expect.web3Events(result, [
+            {
+                event: 'Transfer',
+                args: {
+                    from: accounts[0],
+                    to: accounts[1],
+                    value: COIN
+                }
+            },
+            {
+                event: 'Transfer',
+                args: {
+                    from: accounts[0],
+                    to: accounts[1],
+                    value: 2 * COIN
+                }
+            },
+        ], 'events are emitted');
+    });
 
 });
