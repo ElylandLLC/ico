@@ -41,7 +41,7 @@ contract('CGO', function (accounts) {
         assert.equal(MINT_CAP / 2, (await instance.mintAmount()).valueOf(), "mintAmount after timeJump check");
         assert.equal(0, (await instance.balanceOf(accounts[1])).valueOf(), "balance before mint");
 
-        let result = await instance.mint();
+        let result = await instance.mint('0x0000000000000000000000000000000000000000000000000000000000000043');
 
         assert.equal(MINT_CAP / 2, (await instance.balanceOf(accounts[1])).valueOf(), "balance after mint");
         assert.equal(0, (await instance.mintAmount()).valueOf(), "mintAmount after mint");
@@ -60,6 +60,12 @@ contract('CGO', function (accounts) {
                     from: "0x0000000000000000000000000000000000000000",
                     to: accounts[1],
                     value: Number(MINT_CAP / 2)
+                }
+            },
+            {
+                event: 'ReportHash',
+                args: {
+                    hash: "0x0000000000000000000000000000000000000000000000000000000000000043",
                 }
             },
         ], 'Events are emitted');

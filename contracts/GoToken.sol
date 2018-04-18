@@ -38,6 +38,8 @@ contract GoToken is StandardToken, BurnableToken, Ownable {
 
     event Mint(address indexed to, uint256 amount);
 
+    event ReportHash(bytes32 hash);
+
     event SetupAutoForward(address address_);
 
     event PayOnBehalf(address indexed sender, address indexed from, address indexed to, uint256 amount);
@@ -118,17 +120,20 @@ contract GoToken is StandardToken, BurnableToken, Ownable {
     /**
      * @dev Function to mint tokens
      */
-    function mint() public only(mintManager) {
+    function mint(bytes32 reportHash) public only(mintManager) {
         require(mintStartTime > 0);
         require(timeNow() > mintStartTime + lastMintSeconds);
         uint256 amount = mintAmount();
-        require(amount > 0);
-
-        lastMintSeconds = timeNow().sub(mintStartTime);
-        totalSupply_ = totalSupply_.add(amount);
-        balances[mintReceiver] = balances[mintReceiver].add(amount);
-        Mint(mintReceiver, amount);
-        Transfer(address(0), mintReceiver, amount);
+        if (amount > 0) {
+            lastMintSeconds = timeNow().sub(mintStartTime);
+            totalSupply_ = totalSupply_.add(amount);
+            balances[mintReceiver] = balances[mintReceiver].add(amount);
+            Mint(mintReceiver, amount);
+            Transfer(address(0), mintReceiver, amount);
+        }
+        if (reportHash != bytes32(0)) {
+            ReportHash(reportHash);
+        }
     }
 
     /**
