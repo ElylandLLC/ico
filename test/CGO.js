@@ -4,10 +4,8 @@ const CGO = artifacts.require("./CgoTestToken.sol");
 
 contract('CGO', function (accounts) {
     let instance;
-    beforeEach(function () {
-        return CGO.new().then(function (_instance) {
-            instance = _instance;
-        });
+    beforeEach(async function () {
+        instance = await CGO.new();
     });
 
     const COIN = 1e18;

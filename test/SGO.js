@@ -12,10 +12,8 @@ const SgoSubToken = artifacts.require("./SgoSubToken.sol");
 
 contract('SGO', function (accounts) {
     let instance;
-    beforeEach(function () {
-        return SGO.new().then(function (_instance) {
-            instance = _instance;
-        });
+    beforeEach(async function () {
+        instance = await SGO.new();
     });
 
     let expectRevert = async promise => {
@@ -25,6 +23,7 @@ contract('SGO', function (accounts) {
             if (error.message.search('revert') >= 0) {
                 return;
             }
+            assert.fail(null, null, 'Expected revert not received, but received error: ' + error.message);
         }
         assert.fail(null, null, 'Expected revert not received');
     };
@@ -151,7 +150,7 @@ contract('SGO', function (accounts) {
         await instance.registerReceiverContract(accounts[1]);
 
         // transfer to non-contract should fail
-        expectRevert(instance.transfer(accounts[1], COIN));
+        await expectRevert(instance.transfer(accounts[1], COIN));
 
         let sale = (await SgoTestSale.new(instance.address));
         let sub = (await SgoSubToken.new(sale.address));
@@ -201,7 +200,7 @@ contract('SGO', function (accounts) {
         assert.equal(0, (await sub.balanceOf(accounts[0])).valueOf(), "subCoin a0 initial balance check");
 
         // attempt to pay before contract is registered
-        expectRevert(instance.payToContractOnBehalf(accounts[1], sale.address, 2 * COIN));
+        await expectRevert(instance.payToContractOnBehalf(accounts[1], sale.address, 2 * COIN));
 
         await instance.registerReceiverContract(sale.address);
 

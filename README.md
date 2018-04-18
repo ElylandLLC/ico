@@ -1,6 +1,6 @@
 # ICO
 
-Ethereum contracts for ICO [ico.selfie-go.com](https://ico.selfie-go.com) and [ico.clashgo.com/](https://ico.clashgo.com/).
+Ethereum contracts for ICO [ico.selfie-go.com](https://ico.selfie-go.com) and [ico.clashgo.com](https://ico.clashgo.com).
 
 # Test
 * Make sure npm and truffle are available in path 
