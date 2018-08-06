@@ -12,10 +12,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "truffle": "4.1.13",
     "chai": "^4.1.2",
     "eth-lib": "^0.2.8",
-    "truffle-test-utils": "0.0.2",
-    "zeppelin-solidity": "^1.8.0"
+    "openzeppelin-solidity": "^1.11.0",
+    "truffle-test-utils": "0.0.2"
   },
   "devDependencies": {},
   "description": ""

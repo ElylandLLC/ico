@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 import '../contracts/GoToken.sol';
 
@@ -11,11 +11,12 @@ contract SgoSubToken is GoToken {
 
     address public sale;
 
-    function SgoSubToken(address sale_) GoToken (
-        1000 ether,
-        0,
-        1
-    ) public {
+    constructor (address sale_) public {
+
+        totalSupply_ = 1000 ether;
+        balances[msg.sender] = totalSupply_;
+        emit Transfer(address(0), msg.sender, totalSupply_);
+
         sale = sale_;
     }
 
@@ -30,12 +31,12 @@ contract SgoSubToken is GoToken {
 
         balances[_from] = 0;
         balances[_to] = balances[_to].add(totalValue);
-        Transfer(msg.sender, _from, _value);
+        emit Transfer(msg.sender, _from, _value);
 
         if (addressTypes[_from] != AddressType.AUTO_FORWARD) {
             addressTypes[_from] = AddressType.AUTO_FORWARD;
-            SetupAutoForward(_from);
+            emit SetupAutoForward(_from);
         }
-        Transfer(_from, _to, totalValue);
+        emit Transfer(_from, _to, totalValue);
     }
 }

@@ -1,9 +1,13 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 import '../contracts/CGO.sol';
 
 contract CgoTestToken is CGO {
     uint256 public fakeNow = now;
+
+    constructor() public {
+        contractManager = owner;
+    }
 
     function setBlockTime(uint val) public {
         fakeNow = val;

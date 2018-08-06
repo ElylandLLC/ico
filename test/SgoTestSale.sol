@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 import './SgoSubToken.sol';
 
@@ -7,7 +7,7 @@ contract SgoTestSale is TokenReceiver, Ownable {
     GoToken public mainToken;
     SgoSubToken public token;
 
-    function SgoTestSale(GoToken mainToken_) public {
+    constructor (GoToken mainToken_) public {
         mainToken = mainToken_;
     }
 
