@@ -4,13 +4,18 @@ import 'openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol';
 
 /**
  * @title Standard ERC20 token with auto-forwarding option
+ * @dev Current owner of address may transfer ownership by setting up auto forward
+ * @dev current balance and all future transfers to address will be forwarded to new owner
+ *
+ * @dev AutoForward may be set either set by current owner directly (@see setupAutoForward) or by passing
+ * @dev signed by owner of keccak256("setup forward", _tokenAddress, _address, _newOwner) (@see setupAutoForwardVRS)
  */
 contract AutoForwardableToken is StandardToken {
     using SafeMath for uint256;
 
     mapping (address => address) public autoForward;
 
-    event SetupAutoForward(address address_, address oldReceiver_, address newReceiver_);
+    event SetupAutoForward(address address_, address oldOwner_, address newOwner_);
 
     /**
      * @dev transfer token with autoForward handler
@@ -61,21 +66,43 @@ contract AutoForwardableToken is StandardToken {
      *
      * _address - address to setup auto forward from
      * _receiver - receiver of auto-forwarded tokens
+     *
+     */
+    function setupAutoForward(address _address, address _receiver) public {
+        address currentOwner = autoForward[_address];
+        if (currentOwner == address(0)) {
+            currentOwner = _address;
+        }
+        require(currentOwner == msg.sender);
+
+        autoForward[_address] = _receiver;
+        emit SetupAutoForward(_address, currentOwner, _receiver);
+        if (_receiver != address(0)) {
+            // transfer even if balance == 0 to enforce no-cycles
+            doTransfer(_address, _receiver, balances[_address]);
+        }
+    }
+
+    /**
+     * @dev setup auto-forward address
+     * @dev and send _address balance to _receiver
+     *
+     * _address - address to setup auto forward from
+     * _receiver - receiver of auto-forwarded tokens
      * _v, _r, _s - sign of message {msg.sender, _to} with current _receiver (or _address if none) key
      *
      */
-    function setupAutoForward(address _address, address _receiver, uint8 _v, bytes32 _r, bytes32 _s) public {
+    function setupAutoForwardVRS(address _address, address _receiver, uint8 _v, bytes32 _r, bytes32 _s) public {
         address sigAddress = ecrecover(keccak256(abi.encodePacked("setup forward", this, _address, _receiver)), _v, _r, _s);
-        address checkAddress = autoForward[_address];
-        if (checkAddress == address(0)) {
-            checkAddress = _address;
+        address currentOwner = autoForward[_address];
+        if (currentOwner == address(0)) {
+            currentOwner = _address;
         }
-
-        require(checkAddress == sigAddress);
+        require(currentOwner == sigAddress);
 
         autoForward[_address] = _receiver;
 
-        emit SetupAutoForward(_address, checkAddress, _receiver);
+        emit SetupAutoForward(_address, currentOwner, _receiver);
         if (_receiver != address(0)) {
             // transfer even if balance == 0 to enforce no-cycles
             doTransfer(_address, _receiver, balances[_address]);
