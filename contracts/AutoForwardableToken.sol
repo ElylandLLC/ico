@@ -61,6 +61,17 @@ contract AutoForwardableToken is StandardToken {
     }
 
     /**
+     * @dev return real owner of address
+     */
+    function ownerOf(address _address, address _currentOwner) view public returns (address) {
+        while (_currentOwner != address(0)) {
+            _address = _currentOwner;
+            _currentOwner = autoForward[_address];
+        }
+        return _address;
+    }
+
+    /**
      * @dev setup auto-forward address
      * @dev and send _address balance to _receiver
      *
@@ -68,12 +79,9 @@ contract AutoForwardableToken is StandardToken {
      * _receiver - receiver of auto-forwarded tokens
      *
      */
-    function setupAutoForward(address _address, address _receiver) public {
+    function doSetupAutoForward(address _sender, address _address, address _receiver) private {
         address currentOwner = autoForward[_address];
-        if (currentOwner == address(0)) {
-            currentOwner = _address;
-        }
-        require(currentOwner == msg.sender);
+        require(_sender == ownerOf(_address, currentOwner));
 
         autoForward[_address] = _receiver;
         emit SetupAutoForward(_address, currentOwner, _receiver);
@@ -89,24 +97,23 @@ contract AutoForwardableToken is StandardToken {
      *
      * _address - address to setup auto forward from
      * _receiver - receiver of auto-forwarded tokens
+     *
+     */
+    function setupAutoForward(address _address, address _receiver) public {
+        doSetupAutoForward(msg.sender, _address, _receiver);
+    }
+
+    /**
+     * @dev setup auto-forward address
+     * @dev and send _address balance to _receiver
+     *
+     * _address - address to setup auto forward from
+     * _receiver - receiver of auto-forwarded tokens
      * _v, _r, _s - sign of message {msg.sender, _to} with current _receiver (or _address if none) key
      *
      */
     function setupAutoForwardVRS(address _address, address _receiver, uint8 _v, bytes32 _r, bytes32 _s) public {
-        address sigAddress = ecrecover(keccak256(abi.encodePacked("setup forward", this, _address, _receiver)), _v, _r, _s);
-        address currentOwner = autoForward[_address];
-        if (currentOwner == address(0)) {
-            currentOwner = _address;
-        }
-        require(currentOwner == sigAddress);
-
-        autoForward[_address] = _receiver;
-
-        emit SetupAutoForward(_address, currentOwner, _receiver);
-        if (_receiver != address(0)) {
-            // transfer even if balance == 0 to enforce no-cycles
-            doTransfer(_address, _receiver, balances[_address]);
-        }
+        doSetupAutoForward(ecrecover(keccak256(abi.encodePacked("setup forward", this, _address, _receiver)), _v, _r, _s), _address, _receiver);
     }
 
 }
