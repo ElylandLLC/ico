@@ -10,7 +10,7 @@ contract AutoForwardableToken is StandardToken {
 
     mapping (address => address) public autoForward;
 
-    event SetupAutoForward(address address_, address receiver_);
+    event SetupAutoForward(address address_, address oldReceiver_, address receiver_);
 
     /**
      * @dev transfer token with autoForward handler
@@ -61,27 +61,25 @@ contract AutoForwardableToken is StandardToken {
      *
      * _address - address to setup auto forward from
      * _receiver - receiver of auto-forwarded tokens
-     * _v, _r, _s - sign of message {msg.sender, _to} with _from key
+     * _v, _r, _s - sign of message {msg.sender, _to} with current _receiver (or _address if none) key
      *
      */
     function setupAutoForward(address _address, address _receiver, uint8 _v, bytes32 _r, bytes32 _s) public {
-        require(_address == ecrecover(keccak256(abi.encodePacked("setup forward", this, _receiver)), _v, _r, _s));
+        address sigAddress = ecrecover(keccak256(abi.encodePacked("setup forward", this, _address, _receiver)), _v, _r, _s);
+        address checkAddress = autoForward[_address];
+        if (checkAddress == address(0)) {
+            checkAddress = _address;
+        }
+
+        require(checkAddress == sigAddress);
 
         autoForward[_address] = _receiver;
 
+        emit SetupAutoForward(_address, checkAddress, _receiver);
         if (_receiver != address(0)) {
-            address _from = _address;
-            address _to = _receiver;
-            uint256 _value = balances[_from];
-
-            if (_value > 0) {
-                balances[_from] = 0;
-                balances[_to] = balances[_to].add(_value);
-                emit Transfer(_from, _to, _value);
-            }
+            // transfer even if balance == 0 to enforce no-cycles
+            doTransfer(_address, _receiver, balances[_address]);
         }
-
-        emit SetupAutoForward(_address, _receiver);
     }
 
 }
