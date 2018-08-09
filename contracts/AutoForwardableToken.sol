@@ -10,7 +10,7 @@ contract AutoForwardableToken is StandardToken {
 
     mapping (address => address) public autoForward;
 
-    event SetupAutoForward(address address_, address oldReceiver_, address receiver_);
+    event SetupAutoForward(address address_, address oldReceiver_, address newReceiver_);
 
     /**
      * @dev transfer token with autoForward handler
