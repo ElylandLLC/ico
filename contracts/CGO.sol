@@ -1,11 +1,11 @@
 pragma solidity ^0.4.24;
 
-import './GoToken.sol';
 import './HalfMintableToken.sol';
 import './BulkTransferToken.sol';
+import "./AutoForwardableToken.sol";
 import 'openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol';
 
-contract CGO is GoToken, HalfMintableToken, BulkTransferToken, BurnableToken {
+contract CGO is AutoForwardableToken, HalfMintableToken, BulkTransferToken, BurnableToken {
     string public name = "Clash & GO Token";
     string public symbol = "CGO";
     uint8 public decimals = 18;
