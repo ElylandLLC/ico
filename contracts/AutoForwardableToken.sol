@@ -109,7 +109,7 @@ contract AutoForwardableToken is StandardToken {
      *
      * _address - address to setup auto forward from
      * _receiver - receiver of auto-forwarded tokens
-     * _v, _r, _s - sign of message {msg.sender, _to} with current _receiver (or _address if none) key
+     * _v, _r, _s - sign of message {"setup forward", _tokenAddress, _address, _receiver} with current _receiver (or _address if none) key
      *
      */
     function setupAutoForwardVRS(address _address, address _receiver, uint8 _v, bytes32 _r, bytes32 _s) public {
